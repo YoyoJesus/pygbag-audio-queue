@@ -39,7 +39,7 @@ rm -rf .vercel          # Vercel build metadata
 # pygame-web.github.io. We don't need threading, so strip those meta tags.
 for html in build/web/*.html; do
   if [ -f "$html" ]; then
-    sed -i '/http-equiv="Cross-Origin-/d' "$html"
+    sed -i -E '/<meta[^>]*[Cc]ross-[Oo]rigin/d' "$html"
   fi
 done
 
