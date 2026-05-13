@@ -11,13 +11,6 @@
         { "key": "Cross-Origin-Opener-Policy",   "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
       ]
-    },
-    {
-      "source": "/assets/(.*\\.(ogg|mp3|wav|flac))",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-        { "key": "Content-Type",  "value": "audio/ogg" }
-      ]
     }
   ]
 }
