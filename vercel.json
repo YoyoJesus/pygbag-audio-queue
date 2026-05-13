@@ -3,14 +3,5 @@
   "outputDirectory": "build/web",
   "installCommand": "true",
   "buildCommand": "bash build.sh",
-  "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Cross-Origin-Opener-Policy",   "value": "same-origin" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
-      ]
-    }
-  ]
+  "cleanUrls": true
 }
