@@ -20,6 +20,23 @@ IS_WEB = sys.platform == "emscripten"
 if IS_WEB:
     import platform as pf
 
+
+def _web_audio(method: str, *args):
+    """Call window.typAudio.<method>(*args) in the browser.
+
+    Returns the JS return value on success; True when the method returns void
+    (JS undefined → Python None). Returns None on any exception so callers can
+    distinguish success from failure without crashing the app.
+    """
+    if not IS_WEB:
+        return None
+    try:
+        result = getattr(pf.window.typAudio, method)(*args)
+        return result if result is not None else True
+    except Exception as exc:
+        print(f"[web audio] {method} failed: {exc}")
+        return None
+
 W, H = 800, 600
 FPS = 60
 
@@ -43,15 +60,11 @@ class AudioBackend:
             pygame.mixer.init()
             pygame.mixer.music.set_volume(self.volume)
 
-    @property
-    def engine(self):
-        return pf.window.typAudio
-
     def play(self, url: str, loops: int = 0) -> None:
         self.current_url = url
         self.paused = False
         if IS_WEB:
-            self.engine.playMusic(url, loops)
+            _web_audio("playMusic", url, loops)
         else:
             try:
                 pygame.mixer.music.load(url)
@@ -64,7 +77,7 @@ class AudioBackend:
         self.current_url = None
         self.paused = False
         if IS_WEB:
-            self.engine.stopMusic()
+            _web_audio("stopMusic")
         else:
             pygame.mixer.music.stop()
 
@@ -73,13 +86,13 @@ class AudioBackend:
             return
         if self.paused:
             if IS_WEB:
-                self.engine.unpauseMusic()
+                _web_audio("unpauseMusic")
             else:
                 pygame.mixer.music.unpause()
             self.paused = False
         else:
             if IS_WEB:
-                self.engine.pauseMusic()
+                _web_audio("pauseMusic")
             else:
                 pygame.mixer.music.pause()
             self.paused = True
@@ -87,7 +100,7 @@ class AudioBackend:
     def set_volume(self, v: float) -> None:
         self.volume = max(0.0, min(1.0, v))
         if IS_WEB:
-            self.engine.setVolume(self.volume)
+            _web_audio("setVolume", self.volume)
         else:
             pygame.mixer.music.set_volume(self.volume)
 
@@ -95,43 +108,37 @@ class AudioBackend:
         if self.current_url is None or self.paused:
             return False
         if IS_WEB:
-            try:
-                return bool(self.engine.isPlaying())
-            except Exception:
-                return True
+            result = _web_audio("isPlaying")
+            return bool(result) if result is not None else True
         return pygame.mixer.music.get_busy()
 
     def show_upload(self) -> None:
-        if IS_WEB:
-            self.engine.showUploadButton()
+        _web_audio("showUploadButton")
+
+    def position_upload(self, vx: int, vy: int, vw: int = W, vh: int = H) -> None:
+        _web_audio("setUploadButtonPosition", vx, vy, vw, vh)
 
     def try_unlock(self) -> None:
-        """Hint the engine that a user gesture has occurred (works around browser autoplay)."""
-        if IS_WEB:
-            try:
-                self.engine.tryUnlock()
-            except Exception:
-                pass
+        _web_audio("tryUnlock")
 
     def poll_new_tracks(self) -> list[tuple[str, str]]:
         """Drain any newly uploaded tracks the engine has registered."""
         if not IS_WEB:
             return []
-        try:
-            total = int(self.engine.getUserTrackCount())
-        except Exception:
+        total_raw = _web_audio("getUserTrackCount")
+        if total_raw is None or total_raw is True:
             return []
+        total = int(total_raw)
         new: list[tuple[str, str]] = []
         while self._known_track_count < total:
             i = self._known_track_count
-            new.append((str(self.engine.getUserTrackName(i)),
-                        str(self.engine.getUserTrackUrl(i))))
+            name = _web_audio("getUserTrackName", i)
+            url  = _web_audio("getUserTrackUrl", i)
+            if isinstance(name, str) and isinstance(url, str):
+                new.append((name, url))
             self._known_track_count += 1
         if new:
-            try:
-                self.engine.clearNewTrackFlag()
-            except Exception:
-                pass
+            _web_audio("clearNewTrackFlag")
         return new
 
 
@@ -224,7 +231,14 @@ async def ensure_engine_loaded() -> bool:
 
 
 async def main() -> None:
-    pygame.init()
+    if IS_WEB:
+        # Avoid pygame.init() on web: it would also init pygame.mixer, whose
+        # pygbag shim spins forever in an autoplay-retry loop and blocks the
+        # rest of the app from ever loading. Web audio goes through typAudio.
+        pygame.display.init()
+        pygame.font.init()
+    else:
+        pygame.init()
     screen = pygame.display.set_mode((W, H))
     pygame.display.set_caption("Pygbag Audio Queue")
     clock = pygame.time.Clock()
@@ -280,7 +294,7 @@ async def main() -> None:
     if IS_WEB:
         # Tuck the engine's UPLOAD MUSIC overlay into the empty top-right
         # band next to the Now Playing card, well clear of every pygame widget.
-        audio.engine.setUploadButtonPosition(665, 125, W, H)
+        audio.position_upload(665, 125, W, H)
         audio.show_upload()
 
     last_playing = False
