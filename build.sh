@@ -34,6 +34,15 @@ rm -rf .vercel          # Vercel build metadata
 # Build the WASM bundle
 "$PYGBAG_VENV/bin/python" -m pygbag --build main.py
 
+# Pygbag's default template injects COEP/COOP meta tags for SharedArrayBuffer,
+# which then blocks its own CDN assets when the page isn't hosted on
+# pygame-web.github.io. We don't need threading, so strip those meta tags.
+for html in build/web/*.html; do
+  if [ -f "$html" ]; then
+    sed -i '/http-equiv="Cross-Origin-/d' "$html"
+  fi
+done
+
 # Copy static assets into build/web/ so the browser can fetch them via HTTP.
 # Use `if` (which `set -e` ignores) so unmatched globs don't abort the script.
 mkdir -p build/web/assets
