@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# pygbag shells out to ffmpeg for audio processing; Vercel's build image
+# doesn't include it, so drop a static binary onto PATH.
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  echo "Installing static ffmpeg..."
+  curl -fsSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o /tmp/ffmpeg.tar.xz
+  mkdir -p /tmp/ffmpeg
+  tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1
+  export PATH="/tmp/ffmpeg/bin:$PATH"
+fi
+ffmpeg -version | head -1
+
 # Compile the TypeScript audio engine → assets/audio_manager.js
 cd "Audio Engine"
 npm ci
