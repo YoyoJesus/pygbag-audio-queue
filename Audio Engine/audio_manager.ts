@@ -32,6 +32,14 @@ export class AudioManager {
   private _fileInput: HTMLInputElement | null = null;
   private _resizeHandler: (() => void) | null = null;
 
+  // ── Upload button placement (in virtual game-coord space) ─────────────────
+  // Defaults sit the button just above the Typ0 menu's BACK button. Callers
+  // can override via setUploadButtonPosition() for other games / apps.
+  private _uploadVx: number = 400;
+  private _uploadVy: number = 395;
+  private _uploadVW: number = 800;
+  private _uploadVH: number = 600;
+
   // ── New-track notification (polled by Python) ─────────────────────────────
   private _newTrackAdded: boolean = false;
   private _lastAddedIndex: number = -1;
@@ -182,9 +190,9 @@ export class AudioManager {
     if (!this._uploadBtn) this._initUploadElements();
     if (this._uploadBtn) {
       this._uploadBtn.style.display = "block";
-      this._positionOverMenu();
+      this._positionUploadButton();
       if (!this._resizeHandler) {
-        this._resizeHandler = () => this._positionOverMenu();
+        this._resizeHandler = () => this._positionUploadButton();
         window.addEventListener("resize", this._resizeHandler);
       }
     }
@@ -200,29 +208,43 @@ export class AudioManager {
   }
 
   /**
-   * Place the upload button on top of the pygame menu's brick popup.
+   * Configure where the upload button sits on the canvas.
+   *
+   *   vx, vy  — button-center position in virtual coords
+   *   vw, vh  — virtual canvas size (default 800×600)
+   *
+   * Re-positions the button immediately if it's currently visible.
+   */
+  setUploadButtonPosition(vx: number, vy: number, vw: number = 800, vh: number = 600): void {
+    this._uploadVx = vx;
+    this._uploadVy = vy;
+    this._uploadVW = vw;
+    this._uploadVH = vh;
+    if (this._uploadBtn && this._uploadBtn.style.display !== "none") {
+      this._positionUploadButton();
+    }
+  }
+
+  /**
+   * Place the upload button at the configured virtual coordinates.
    * The pygame canvas is letterboxed inside a 100%×100% element, so we
    * re-derive the letterbox offsets from the canvas rect and map virtual
-   * coordinates (800×600 game space) to viewport pixels.
+   * coordinates to viewport pixels.
    */
-  private _positionOverMenu(): void {
+  private _positionUploadButton(): void {
     if (!this._uploadBtn) return;
     const canvas = document.querySelector("canvas.emscripten") as HTMLCanvasElement | null;
     if (!canvas) return;
     const r = canvas.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const VW = 800, VH = 600;
-    const scale = Math.min(r.width / VW, r.height / VH);
-    const offX = r.left + (r.width - VW * scale) / 2;
-    const offY = r.top + (r.height - VH * scale) / 2;
-    // Menu brick popup is 500×400 virtual, centered at (400, 300).
-    // Sit just above the BACK button (which runs y≈425–480 virtual).
-    const vx = 400, vy = 395;
+    const scale = Math.min(r.width / this._uploadVW, r.height / this._uploadVH);
+    const offX = r.left + (r.width - this._uploadVW * scale) / 2;
+    const offY = r.top + (r.height - this._uploadVH * scale) / 2;
     const btn = this._uploadBtn;
     btn.style.right = "auto";
     btn.style.transform = "none";
-    btn.style.left = (offX + vx * scale - btn.offsetWidth / 2) + "px";
-    btn.style.top  = (offY + vy * scale - btn.offsetHeight / 2) + "px";
+    btn.style.left = (offX + this._uploadVx * scale - btn.offsetWidth / 2) + "px";
+    btn.style.top  = (offY + this._uploadVy * scale - btn.offsetHeight / 2) + "px";
   }
 
   /** Number of tracks the user has uploaded this session. */

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "build/web",
+  "installCommand": "true",
+  "buildCommand": "cd 'Audio Engine' && npm ci && npx tsc --module es2020 && cd .. && python3 -m venv .pygbag-venv && .pygbag-venv/bin/python -m pip install --upgrade pip && .pygbag-venv/bin/python -m pip install 'pygbag>=0.9.0' && .pygbag-venv/bin/python -m pygbag --build main.py && mkdir -p build/web/assets && for f in assets/audio_manager.js assets/*.ogg assets/*.mp3 assets/*.wav assets/*.flac; do [ -f \"$f\" ] && cp \"$f\" build/web/assets/; done; true",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy",   "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    },
+    {
+      "source": "/assets/(.*\\.(ogg|mp3|wav|flac))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Content-Type",  "value": "audio/ogg" }
+      ]
+    }
+  ]
+}
