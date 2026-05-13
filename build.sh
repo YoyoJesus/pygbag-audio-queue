@@ -34,8 +34,11 @@ rm -rf .vercel          # Vercel build metadata
 # Build the WASM bundle
 "$PYGBAG_VENV/bin/python" -m pygbag --build main.py
 
-# Copy static assets into build/web/ so the browser can fetch them via HTTP
+# Copy static assets into build/web/ so the browser can fetch them via HTTP.
+# Use `if` (which `set -e` ignores) so unmatched globs don't abort the script.
 mkdir -p build/web/assets
 for f in assets/audio_manager.js assets/*.ogg assets/*.mp3 assets/*.wav assets/*.flac; do
-  [ -f "$f" ] && cp "$f" build/web/assets/
+  if [ -f "$f" ]; then
+    cp "$f" build/web/assets/
+  fi
 done
