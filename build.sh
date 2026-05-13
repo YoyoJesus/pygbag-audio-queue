@@ -18,6 +18,10 @@ npm ci
 npx tsc --module es2020
 cd ..
 
+# node_modules was only needed for tsc — drop it so pygbag doesn't recursively
+# pack thousands of dev-dependency files into the .apk.
+rm -rf "Audio Engine/node_modules"
+
 # Install pygbag into an isolated venv and build the WASM bundle
 python3 -m venv .pygbag-venv
 .pygbag-venv/bin/python -m pip install --upgrade pip
