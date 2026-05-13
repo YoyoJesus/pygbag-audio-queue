@@ -18,15 +18,21 @@ npm ci
 npx tsc --module es2020
 cd ..
 
-# node_modules was only needed for tsc — drop it so pygbag doesn't recursively
-# pack thousands of dev-dependency files into the .apk.
-rm -rf "Audio Engine/node_modules"
+# pygbag recursively packs every file under the project dir into the .apk.
+# Build the venv OUTSIDE the project root so its ~10k vendored files don't
+# end up bundled. Same reason we drop node_modules and the Audio Engine
+# source tree below — the only artefacts pygbag should see are main.py and
+# the compiled assets/.
+PYGBAG_VENV=/tmp/pygbag-venv
+python3 -m venv "$PYGBAG_VENV"
+"$PYGBAG_VENV/bin/python" -m pip install --upgrade pip
+"$PYGBAG_VENV/bin/python" -m pip install 'pygbag>=0.9.0'
 
-# Install pygbag into an isolated venv and build the WASM bundle
-python3 -m venv .pygbag-venv
-.pygbag-venv/bin/python -m pip install --upgrade pip
-.pygbag-venv/bin/python -m pip install 'pygbag>=0.9.0'
-.pygbag-venv/bin/python -m pygbag --build main.py
+rm -rf "Audio Engine"   # only assets/audio_manager.js is needed at runtime
+rm -rf .vercel          # Vercel build metadata
+
+# Build the WASM bundle
+"$PYGBAG_VENV/bin/python" -m pygbag --build main.py
 
 # Copy static assets into build/web/ so the browser can fetch them via HTTP
 mkdir -p build/web/assets
